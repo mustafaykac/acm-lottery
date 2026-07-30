@@ -3,7 +3,7 @@
 Bu klasördeki aşağıdaki dosyalar **opsiyoneldir**. Uygulama bu dosyalar olmadan da hatasız
 çalışır ve otomatik olarak metin/ses tabanlı alternatiflere (fallback) geçer.
 
-- `logo.png` — Hull City resmi kulüp logosu (949×1200px, şeffaf arka plan). Dosya silinir veya
+- `logo.png` — Hull City resmi kulüp logosu (275×348px, şeffaf arka plan). Dosya silinir veya
   bulunamazsa hem üst menüde hem de çekiliş ekranının başlığında otomatik olarak kupa ikonlu
   metin tabanlı kurumsal rozete düşülür (bkz. `components/BrandLogo.tsx`).
 - `event-background.jpg` — Kullanılırsa arka plan efektlerine ek bir atmosferik görsel katmanı
