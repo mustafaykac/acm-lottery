@@ -7,12 +7,14 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "hash-password": "node scripts/hash-password.js"
   },
   "dependencies": {
     "next": "^15.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "bcryptjs": "^3.0.3",
     "framer-motion": "^11.11.0",
     "lucide-react": "^0.460.0",
     "read-excel-file": "^9.3.5",

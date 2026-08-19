@@ -3,6 +3,7 @@
 import { Settings } from "lucide-react";
 import BrandLogo from "./BrandLogo";
 import FullscreenButton from "./FullscreenButton";
+import LogoutButton from "./LogoutButton";
 
 interface AppHeaderProps {
   onOpenSettings: () => void;
@@ -32,6 +33,7 @@ export default function AppHeader({ onOpenSettings }: AppHeaderProps) {
         >
           <Settings className="h-5 w-5" />
         </button>
+        <LogoutButton />
       </div>
     </header>
   );
