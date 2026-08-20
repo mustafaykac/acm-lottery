@@ -6,7 +6,14 @@ export async function middleware(request: NextRequest) {
   const session = await verifySessionToken(token);
 
   if (!session) {
-    const loginUrl = new URL("/login", request.url);
+    // Build the redirect from the actual forwarded request headers rather
+    // than `request.url`/`request.nextUrl` - behind this app's nginx +
+    // systemd setup (bound to a fixed HOSTNAME/PORT), those can resolve to
+    // the internal "http://localhost:3060" address instead of the public
+    // domain, sending browsers to a redirect they can't reach.
+    const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
+    const proto = request.headers.get("x-forwarded-proto") || request.nextUrl.protocol.replace(":", "");
+    const loginUrl = new URL(`${proto}://${host}/login`);
     return NextResponse.redirect(loginUrl);
   }
 
