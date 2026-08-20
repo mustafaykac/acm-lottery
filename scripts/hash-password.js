@@ -16,10 +16,17 @@ if (password.length < 8) {
 }
 
 const hash = bcrypt.hashSync(password, 12);
+const escaped = hash.replace(/\$/g, "\\$");
+
 // IMPORTANT: Next.js's own .env loader expands "$" as if it were a shell
 // variable reference (like dotenv-expand), which silently mangles bcrypt
-// hashes (they're full of "$"). Every "$" below MUST be escaped as "\$" or
-// the hash will be truncated and login will always fail with no obvious error.
-const escaped = hash.replace(/\$/g, "\\$");
-console.log("\nAdd this line to your .env file EXACTLY as shown (the backslashes before each $ are required):\n");
+// hashes (they're full of "$") if left unescaped. Which form you need
+// depends on how the value reaches process.env:
+console.log("\nLocal dev (.env / .env.local loaded directly by Next.js) - escape every \"$\":\n");
 console.log(`ADMIN_PASSWORD_HASH=${escaped}\n`);
+console.log("Production via systemd EnvironmentFile (see README > Live Deployment) -");
+console.log("systemd does NOT do \"$\" expansion, so use the RAW hash instead:\n");
+console.log(`ADMIN_PASSWORD_HASH=${hash}\n`);
+console.log("(scripts/deploy.sh already deletes the .env copy Next.js auto-places in");
+console.log(".next/standalone/ after every build, which is what would otherwise re-mangle");
+console.log("the raw value at runtime - see the comment in that script for details.)\n");

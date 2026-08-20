@@ -4,6 +4,46 @@ Yaklaşık 1.000 kişilik bir katılımcı listesinden, İngiltere'de bir Hull C
 hakkı kazanacak **5 kişiyi** tek tek, şeffaf ve güvenli rastgelelikle seçen kurumsal kura
 uygulaması.
 
+## Canlı Deployment
+
+| | |
+|---|---|
+| URL | https://giveaway.acmteches.com |
+| Sunucu | Azure Ubuntu VM (`20.33.6.124`) — `broadcast`, `calendar` ve `ci-tracker` uygulamalarıyla aynı sunucu |
+| App dizini | `/var/www/acm-lottery` |
+| Servis | `acm-lottery.service` (systemd), `127.0.0.1:3060`'a bağlı, nginx reverse proxy arkasında |
+| Çalıştırma | `next build` (standalone output) → `node .next/standalone/server.js` |
+| TLS | Let's Encrypt / certbot, otomatik yenileniyor |
+| Güncelleme | `cd /var/www/acm-lottery && bash scripts/deploy.sh` (bkz. aşağıdaki Giriş Ekranı bölümündeki `.env` uyarısı) |
+
+<details>
+<summary>systemd servis dosyası (<code>/etc/systemd/system/acm-lottery.service</code>)</summary>
+
+```ini
+[Unit]
+Description=ACM Lottery - Hull City Kura Sistemi
+After=network.target
+
+[Service]
+Type=simple
+User=acmappadmin
+WorkingDirectory=/var/www/acm-lottery/.next/standalone
+EnvironmentFile=/var/www/acm-lottery/.env
+Environment=HOSTNAME=127.0.0.1
+ExecStart=/usr/bin/node /var/www/acm-lottery/.next/standalone/server.js
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
+```
+
+`.env` (repo kökünde, git'e girmez) `NODE_ENV`, `PORT`, `SESSION_SECRET`, `ADMIN_USERNAME`,
+`ADMIN_PASSWORD_HASH` değerlerini içerir — bkz. Giriş Ekranı bölümü.
+
+</details>
+
 ## Özellikler
 
 - Excel (`.xlsx`, `.xls`) ve CSV katılımcı listesi yükleme, otomatik kolon eşleme (Ad Soyad,
@@ -37,6 +77,41 @@ uygulaması.
 
 > Not: npm'deki `xlsx` (SheetJS) paketinde bilinen güvenlik açıkları bulunduğu için Excel
 > okuma işlemi için aktif bakımı olan `read-excel-file` paketi tercih edilmiştir.
+
+## Giriş Ekranı (Kimlik Doğrulama)
+
+Uygulama tek bir admin hesabıyla korunur — `middleware.ts`, `/login` ve `/api/auth/*` dışındaki
+her rotayı imzalı bir oturum çerezi olmadan erişilemez hale getirir.
+
+- **Oturum:** Sunucu tarafında saklanan bir session değil; `lib/session.ts` içinde
+  Web Crypto (`crypto.subtle`) ile HMAC-SHA256 imzalı, durumsuz (stateless) bir token
+  kullanılır. Bu sayede token doğrulama hem Edge middleware'de hem de normal Node route'larında
+  aynı kodla çalışır (veritabanı veya ek bir session store'a gerek yoktur). Süre: 12 saat.
+- **Şifre doğrulama:** `lib/credentials.ts`, bcrypt (`bcryptjs`) ile `ADMIN_PASSWORD_HASH`'e
+  karşı karşılaştırma yapar. Bu dosya middleware'den **kasıtlı olarak ayrı tutulur** çünkü
+  bcryptjs Edge Runtime'da (varsayılan middleware ortamı) güvenilir şekilde çalışmayabilir.
+- **Rate limiting:** `lib/rate-limit.ts`, IP başına 15 dakikada 10 başarısız denemeyle sınırlar
+  (bellek içi, tek process varsayımıyla — bu uygulama zaten hep tek instance çalışır).
+- Şifre hash'i üretmek için: `npm run hash-password -- "GucluSifreniz123!"`
+
+### ÇOK ÖNEMLİ: `.env` içindeki `$` işareti
+
+`ADMIN_PASSWORD_HASH` bir bcrypt hash'idir ve `$` karakterleriyle doludur
+(`$2b$12$...`). **Next.js'in kendi `.env` okuyucusu, `dotenv-expand` gibi, `$` işaretini
+shell değişken referansı sanıp sessizce siler** — hash'i fark edilmeden bozar ve giriş hep
+"Invalid username or password" ile başarısız olur, hiçbir hata logu düşmez.
+
+İki farklı senaryo, iki farklı çözüm gerektirir (`npm run hash-password` ikisini de basar):
+
+1. **Yerel geliştirme** (`.env`/`.env.local`, doğrudan Next.js tarafından okunur): hash'teki
+   her `$` işaretini `\$` olarak **kaçışlayın**.
+2. **Production** (bu projede systemd `EnvironmentFile=` ile veriliyor — `$` genişletmesi
+   yapmaz): hash'i **kaçışsız/ham** haliyle kullanın. Ancak `next build`, `.env` dosyasını
+   otomatik olarak `.next/standalone/.env`'e **kopyalar**; Next'in runtime'ı bu kopyayı tekrar
+   kendi (kaçışsız değerleri bozan) okuyucusuyla işler ve systemd'nin doğru ayarladığı değerin
+   üzerine yazar. Çözüm: bu kopyayı her build sonrası silmek — `scripts/deploy.sh` bunu zaten
+   otomatik yapıyor (`rm -f .next/standalone/.env`). Elle deploy ediyorsanız bu adımı
+   **atlamayın**.
 
 ## Kurulum
 
